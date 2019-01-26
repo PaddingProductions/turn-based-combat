@@ -8,7 +8,7 @@ const PX_NUM = 3;
 // x and y of the button you are on
 let g_mousePos = [0, 0];
 
-buttonAction = null;
+let g_buttonAction = null;
 //the position of the buttons(not on screen)
 let buttonPos = [];
 for (let c = 0; c < 3; c++) {
@@ -178,13 +178,13 @@ const handleKeyUp = e => {
 			const now = Date.now() / 1000;
 			playerStats['tee faa']['action time'] = now + leftTime;
 
-			buttonAction = buttonPos[g_mousePos[1]];
+			g_buttonAction = buttonPos[g_mousePos[1]];
 			ATK = playerStats['ATK'];
 			damage = 60;
 			setTimeout(() => {
 
 				enemy['HP'] -= damage;
-				buttonAction = null;
+				g_buttonAction = null;
 				swordFrame = 0;
 			}, 1000);
 		}
@@ -223,7 +223,7 @@ const drawCharacters = (characters) => {
 	imgy = 300;
 	for (let i = 0; i < characters.length; i++) {
 
-		if (buttonAction === 'attack') {
+		if (g_buttonAction === 'attack') {
 			imgx = 600;
 			//this SHOULD make it look like it's stabing the enemies.
 			imgx -= (swordFrame * 5) * PX_NUM;
@@ -343,8 +343,8 @@ const mainloop = () => {
 		drawBG();
 		//if selects to do the action on the button
 		//sees which button it's clicked
-		if (buttonAction != 'none' && buttonAction != undefined) {
-			handleAction(buttonAction, damage);
+		if (g_buttonAction != 'none' && g_buttonAction != undefined) {
+			handleAction(g_buttonAction, damage);
 		}
 		if (swordFrame > 15) {
 			swordFrame = 0;
