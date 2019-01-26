@@ -6,7 +6,7 @@ ctx.fillStyle = '#000';
 const PX_NUM = 3;
 
 // x and y of the button you are on
-let mousePos = [0, 0];
+let g_mousePos = [0, 0];
 
 buttonAction = null;
 //the position of the buttons(not on screen)
@@ -163,13 +163,13 @@ const startBattle = () => {
 
 //this does everything, because if done on key down, it will be called constantly
 const handleKeyUp = e => {
-	lastPos = [mousePos[0], mousePos[1]];
+	lastPos = [g_mousePos[0], g_mousePos[1]];
 
 	//changing the position
-	if (currentKey['40']) mousePos[1] += 1;
-	if (currentKey['37']) mousePos[0] -= 1;
-	if (currentKey['38']) mousePos[1] -= 1;
-	if (currentKey['39']) mousePos[0] += 1;
+	if (currentKey['40']) g_mousePos[1] += 1;
+	if (currentKey['37']) g_mousePos[0] -= 1;
+	if (currentKey['38']) g_mousePos[1] -= 1;
+	if (currentKey['39']) g_mousePos[0] += 1;
 
 	//playerTimer
 	if (move === true) {
@@ -178,7 +178,7 @@ const handleKeyUp = e => {
 			const now = Date.now() / 1000;
 			playerStats['tee faa']['action time'] = now + leftTime;
 
-			buttonAction = buttonPos[mousePos[1]];
+			buttonAction = buttonPos[g_mousePos[1]];
 			ATK = playerStats['ATK'];
 			damage = 60;
 			setTimeout(() => {
@@ -278,8 +278,8 @@ const drawButtons = (words) => {
 
 // draws the finger cursor from final fantasy 
 const drawMouse = () => {
-	imgx = 170 + (200 * mousePos[0])
-	imgy = 525 + (80 * mousePos[1]);
+	imgx = 170 + (200 * g_mousePos[0])
+	imgy = 525 + (80 * g_mousePos[1]);
 	ctx.drawImage(cursor, imgx, imgy, 22 * 2, 22 * 2);
 }
 
@@ -336,8 +336,8 @@ const mainloop = () => {
 		//if you dont move to a button, then you will return to the
 		// last button you were on
 
-		if (mousePos[0] < 0 || mousePos[1] < 0 || mousePos[1] >= buttonPos.length) {
-			mousePos = lastPos;
+		if (g_mousePos[0] < 0 || g_mousePos[1] < 0 || g_mousePos[1] >= buttonPos.length) {
+			g_mousePos = lastPos;
 		};
 
 		drawBG();
