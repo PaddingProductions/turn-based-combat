@@ -10,17 +10,25 @@ let g_mousePos = [0, 0];
 
 let g_buttonAction = null;
 //the position of the buttons(not on screen)
-let buttonPos = [];
+let g_buttonPos = [];
 for (let c = 0; c < 3; c++) {
-	buttonPos[c] = 'none';
+	g_buttonPos[c] = 'none';
 }
 //create buttons here 
-buttonPos[0] = 'attack';
-buttonPos[1] = 'defend';
-buttonPos[2] = 'escape';
+g_buttonPos[0] = 'attack';
+g_buttonPos[1] = 'defend';
+g_buttonPos[2] = 'escape';
 
 const BGsizeX = 1200;
 const BGsizeY = 750;
+
+// if it is time to do the next action.
+let g_doAction = true;
+
+// damage delt to all enemies, resets every time you attack
+let g_DMG;
+// staus of the background
+let BGstats = 'none';
 
 // normal = no buttons just waiting
 // attack = buttons untill you select an action
@@ -35,7 +43,7 @@ const enemyImages = {
 	'bombermen': document.getElementById('bombermen'),
 }
 
-const stand_TeeFaa = document.getElementById('player Tee Faa');
+const stand_jonny = document.getElementById('player jonny');
 const shield = document.getElementById('shield');
 const sword = document.getElementById('sword');
 const swordswing = document.getElementById('swordswing');
@@ -87,7 +95,9 @@ var letterList = {
 
 cursor = document.getElementById('cursor');
 
-letterPxNum = 3;
+// the order of attack, set in main loop, when 
+let g_turnList = [];
+
 // the attack multiplyer at the start
 //method shown above, may change
 //damage = (40+(Math.floor(ATK*Math.random()) * (ATK/10);
@@ -98,8 +108,8 @@ let battle = true;
 //number of enemies in the battle
 let enemyNum = 1;
 
+//sw
 let swordFrame = 0;
-//adfhakjdfajf
 
 let currentKey = {
 	//up arrow
@@ -113,20 +123,20 @@ let currentKey = {
 }
 
 let playerStats = {
-	'tee faa': {
+	'jonny': {
 		'HP': 350,
 		'FULL HP': 350,
+		'MP': 0,
+		'FULL MP': 0,
 		'ATK': 10,
-		//10sec - SPD = time gap between each move
-		'SPD': 5,
-		// 
-		'action time': null,
+		//Chance of getting to attack first in a turn.
+		'SPD': 2,
+		//the moves Jonny can do
+		'abilities': ['attack','defend','escape'],
+		//the status it is on, if not, then set to none.
 	}
 }
 
-let move = false;
-
-let waiting = false;
 //stats of all enemies in the game
 const bestiary = {
 	'swordsmen': {
@@ -136,13 +146,6 @@ const bestiary = {
 		'FULL HP': 150,
 		'ATK': 7,
 		'SPD': 3,
-		//timer
-		'action time': null,
-		//AI of the enemy
-		'ablities': null,
-		'AI': () => {
-			return 'attack';
-		}
 	}
 }
 
@@ -150,45 +153,29 @@ const bestiary = {
 let enemy;
 
 const startBattle = () => {
-	//setting up player Timer
-	let leftTime = 10 - playerStats['tee faa']['SPD'];
-	const now = Date.now() / 1000;
-	playerStats['tee faa']['action time'] = now + leftTime;
-
 	///setting up enemy timer.
 	enemy = bestiary['swordsmen'];
-	leftTime = 10 - enemy['SPD'];
-	enemy['action time'] = now + leftTime;
 };
 
 //this does everything, because if done on key down, it will be called constantly
 const handleKeyUp = e => {
 	lastPos = [g_mousePos[0], g_mousePos[1]];
 
-	//changing the position
+	//changing the position of the curor 
 	if (currentKey['40']) g_mousePos[1] += 1;
 	if (currentKey['37']) g_mousePos[0] -= 1;
 	if (currentKey['38']) g_mousePos[1] -= 1;
 	if (currentKey['39']) g_mousePos[0] += 1;
 
-	//playerTimer
-	if (move === true) {
-		if (currentKey['83']) {
-			const leftTime = 10 - playerStats['tee faa']['SPD'];
-			const now = Date.now() / 1000;
-			playerStats['tee faa']['action time'] = now + leftTime;
-
-			g_buttonAction = buttonPos[g_mousePos[1]];
-			ATK = playerStats['ATK'];
-			damage = 60;
-			setTimeout(() => {
-
-				enemy['HP'] -= damage;
-				g_buttonAction = null;
-				swordFrame = 0;
-			}, 1000);
-		}
+	//if they select a move to use
+	if (currentKey['83'] && BGstats !== 'enemy action') {
+		actionManagement(g_buttonPos[g_mousePos[0]]);
+		//make sure they don't chose a move again
+		//which is done by not drawing buttons and changing
+		//the BG stats
+		BGstats = 'none';
 	}
+
 	//resetting keys
 	currentKey['37'] = 0;
 	currentKey['38'] = 0;
@@ -203,18 +190,42 @@ const handleKeyDown = e => {
 	currentKey[e.keyCode] = 1;
 };
 
+let g_Move = [];
+
 const drawBG = () => {
+	//re filling background. 
 	ctx.fillStyle = '#eeeeee'
 	ctx.fillRect(0, 0, BGsizeX, BGsizeY);
 	ctx.lineWidth = '5';
 	ctx.rect(0, 0, BGsizeX, BGsizeY);
 	ctx.stroke();
+	
+	switch (BGstats) {
+		case 'none':
+			drawCharacterStats(['jonny'])
+			drawMouse();
+			drawCharacters(['jonny']);
+		break;
 
-	if (move === true) drawButtons(['attack', 'defend', 'escape']);
-	drawCharacterStats(['tee faa'])
-	drawMouse();
-	drawCharacters(['tee faa']);
-	drawEnemies([enemy]);
+        case 'jonny action':
+			drawButtons(playerStats['jonny']['abilities']);
+			if (g_DMG !== null && g_DMG !== undefined) {
+
+    			writeWord(g_DMG, 300, 300);
+			}
+			drawCharacterStats(['jonny']);
+			drawMouse();
+			drawCharacters(['jonny']);
+		break;
+		
+		case 'enemy action':
+			writeWord('hyaaaaaaa', 300, 300);
+
+			drawCharacterStats(['jonny'])
+			drawMouse();
+			drawCharacters(['jonny']);
+		    //drawEnemies([enemy]);
+	}
 
 }
 
@@ -223,6 +234,8 @@ const drawCharacters = (characters) => {
 	imgy = 300;
 	for (let i = 0; i < characters.length; i++) {
 
+		// if the player is attacking
+		/*
 		if (g_buttonAction === 'attack') {
 			imgx = 600;
 			//this SHOULD make it look like it's stabing the enemies.
@@ -237,12 +250,14 @@ const drawCharacters = (characters) => {
 
 			ctx.drawImage(sword, 1, 111, 18, 6, imgx, imgy, 18 * PX_NUM, 6 * PX_NUM);
 			swordFrame += 1;
-		} else {
-			//when it's waiting for the attack bar to fill
-			ctx.drawImage(stand_TeeFaa, imgx, imgy, 16 * (PX_NUM), 23 * (PX_NUM));
-			ctx.drawImage(shield, 0, 0, 6, 18, imgx - (10 * PX_NUM), imgy + (5 * PX_NUM)
-				, 8 * PX_NUM, 16 * PX_NUM);
-		}
+			return;
+		} 
+		*/
+		//when it's waiting for his or her turn
+		ctx.drawImage(stand_jonny, imgx, imgy, 16 * (PX_NUM), 23 * (PX_NUM));
+		ctx.drawImage(shield, 0, 0, 6, 18, imgx - (10 * PX_NUM), imgy + (5 * PX_NUM)
+			, 8 * PX_NUM, 16 * PX_NUM);
+		
 	}
 }
 
@@ -286,7 +301,6 @@ const drawMouse = () => {
 // draws the character's stats bar
 const drawCharacterStats = (words) => {
 	for (let i = 0; i < words.length; i++) {
-
 		//drawing the blue bar
 		imgx = 220;
 		imgy = 525 + ((50 + 10) * i);
@@ -298,130 +312,104 @@ const drawCharacterStats = (words) => {
 		//writing the name of the fighter
 		writeWord(words[i], imgx + 10, imgy + 10);
 
+
+		//writing the HP of the character and the full hp
 		imgx = imgx + 150;
 		imgy = imgy;
-		HPString = `${playerStats[words[i]]['HP']} / ${playerStats[words[i]]['FULL HP']}`;
-		//writing the HP of the character and the full hp
+		HPString = `hp ${playerStats[words[i]]['HP']} / ${playerStats[words[i]]['FULL HP']}`;
+
 		writeWord(HPString, imgx, imgy);
 
-		//drawing the time bar
-		ctx.fillStyle = '#000'
+		//drawing mana/ full mana
+		imgx = imgx + 150;
+		imgy = imgy;
+		HPString = `mp ${playerStats[words[i]]['MP']} / ${playerStats[words[i]]['FULL MP']}`;
 
-		ctx.lineWidth = '3';
-		ctx.rect(imgx + 100, imgy, 100, 20);
-		ctx.stroke();
-		ctx.fillStyle = '#ffff00';
-
-		// length of the bar
-		const stats = playerStats[words[i]];
-		const actionTime = stats['action time'];
-		if (actionTime !== null) {
-			const now = Date.now() / 1000;
-			let timeLeft = actionTime - now;
-			if (timeLeft < 0)
-				timeLeft = 0;
-			const barLength = 100 /
-				(10 - stats['SPD']) *
-				((10 - stats['SPD']) - timeLeft);
-
-			ctx.fillRect(imgx + 100, imgy, barLength, 20);
-		}
+		writeWord(HPString, imgx, imgy);
 	}
 }
-//called every 33millisecond
-const mainloop = () => {
-	if (battle === true) {
-		// changing the button you are hovering on
 
-		//if you dont move to a button, then you will return to the
-		// last button you were on
-
-		if (g_mousePos[0] < 0 || g_mousePos[1] < 0 || g_mousePos[1] >= buttonPos.length) {
-			g_mousePos = lastPos;
-		};
-
-		drawBG();
-		//if selects to do the action on the button
-		//sees which button it's clicked
-		if (g_buttonAction != 'none' && g_buttonAction != undefined) {
-			handleAction(g_buttonAction, damage);
+const mainLoop = () => {
+	console.log(BGstats);
+	console.log(g_turnList);
+	console.log(g_DMG);
+	// if the turn has ended and needs to genrate a new order
+	if (g_turnList.length === 0) {
+		//for now it will be a player 60 and enemy 40 chance.
+		// this is the percentage
+		let Num = Math.floor(Math.random()*100);
+		// change the 60 into the formula 
+		if (Num <= 50) {
+			g_turnList.push('jonny');
+			g_turnList.push('enemy');
+		} else {
+			g_turnList.push('enemy');
+			g_turnList.push('jonny');
 		}
-		if (swordFrame > 15) {
-			swordFrame = 0;
-		}
-
-		//checks on the player timer
-		playerTimer();
-		//checks on the enemy's timer
-		enemyTimer();
 	}
-};
-
-const handleAction = (buttonAction) => {
-	if (buttonAction === 'attack') {
-		if (enemy['HP'] <= 0) {
-			battle = false;
-			return;
-		}
-		writeWord(`${damage}`, 100, 250);
-
+	if (g_doAction === true) {
+		turnManagement();
 	}
-	move = false;
+	drawBG();
+	// if it's player's trun and is attacking.
+	if (BGstats === 'none' && g_DMG !== undefined && g_DMG !== null) {
+		writeWord(g_DMG, 200 ,200);
+	}
+
 }
 
-const enemyAction = (buttonAction) => {
-	if (buttonAction === 'attack') {
-		if (playerStats['tee faa']['HP'] <= 0) {
-			battle = false;
-			return;
-		}
-		writeWord(`${damage}`, 800, 250);
+const turnManagement = () =>{
+	// if it is the player's turn, then draw the action buttons.
+	if (g_turnList[0] !== 'enemy') {
+  
+		BGstats = `${g_turnList[0]} action`;
 
+	} else {
+		// if is enemy's move
+		BGstats = 'enemy action';
+
+		setTimeout(() => {
+			g_turnList.shift();
+			g_doAction = true;
+		}, 3000);
 	}
-	move = false;
+	g_doAction = false;
 }
 
+const actionManagement = (action) => {
+	g_buttonAction = action;
+	switch (action){
+		//if they chose to attack
+		case 'attack':
+		    g_DMG = 30;
+			enemy['HP'] -= g_DMG;
+		break;
+	}
+	setTimeout(() => {
+		//stops it from attacking
+		g_buttonAction = null;
+		//lets next person attack
+		g_turnList.shift();
+		//resets the damage,
+		// VERY IMPORTANT, DO NOT DELETE
+		g_DMG = null;
+		// allows the player to move on to the next player/ enemy
+		g_doAction = true;
+	},2000);
+}
 const writeWord = (word, posx, posy) => {
 	for (i = 0; i < word.length; i++) {
 		var letter = word.charAt(i);
 		if (letter != ' ') {
 			imgx = posx + (8 * i) * PX_NUM;
 			imgy = posy;
-			console.log(letter)
 			ctx.drawImage(letterList[letter], imgx, imgy, 8 * PX_NUM, 8 * PX_NUM);
 		}
 	}
 }
 
-const playerTimer = () => {
-	const actionTime = playerStats['tee faa']['action time'];
-	if (actionTime !== null) {
-		const now = Date.now() / 1000;
-		let timeLeft = actionTime - now;
-		if (timeLeft < 0) {
-			move = true;
-			waiting = false;
-		}
-	}
-}
-
-const enemyTimer = () => {
-	const actionTime = enemy['action time'];
-	const now = Date.now() / 1000;
-	let timeLeft = actionTime - now;
-
-	if (timeLeft <= 0) {
-		setInterval(() => {
-			enemy['action time'] = now + (10 - enemy['SPD']);
-		}, 2000)
-		enemyAction(enemy["AI"]()[0], enemy["AI"]()[1])
-	}
-}
-
-startBattle();
-
-// key down and keyup listeners
 document.addEventListener("keydown", handleKeyDown);
 document.addEventListener("keyup", handleKeyUp);
 
-setInterval(mainloop, 33);
+startBattle();
+setInterval(mainLoop, 33);
