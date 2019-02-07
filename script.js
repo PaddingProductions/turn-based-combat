@@ -8,7 +8,6 @@ const PX_NUM = 3;
 // x and y of the button you are on
 let g_mousePos = [0, 0];
 
-let g_buttonAction = null;
 //the position of the buttons(not on screen)
 let g_buttonPos = [];
 for (let c = 0; c < 3; c++) {
@@ -18,6 +17,9 @@ for (let c = 0; c < 3; c++) {
 g_buttonPos[0] = 'attack';
 g_buttonPos[1] = 'defend';
 g_buttonPos[2] = 'escape';
+
+
+let g_win = false;
 
 const BGsizeX = 1200;
 const BGsizeY = 750;
@@ -130,7 +132,9 @@ let playerStats = {
 		'FULL MP': 0,
 		'ATK': 10,
 		//Chance of getting to attack first in a turn.
-		'SPD': 2,
+		'SPD': 3,
+		//critical rate
+		'CRT': null,
 		//the moves Jonny can do
 		'abilities': ['attack','defend','escape'],
 		//the status it is on, if not, then set to none.
@@ -142,10 +146,17 @@ const bestiary = {
 	'swordsmen': {
 		'NAME': 'swordsmen',
 		//stats
-		'HP': 150,
-		'FULL HP': 150,
+		'HP': 90,
+		'FULL HP': 90,
 		'ATK': 7,
-		'SPD': 3,
+		// chance of doging attacks
+		'SPD': 1,
+		//critical rate
+		'CRT': null,
+		//a function called every time 
+		'AI': () => {
+            return 'attack';
+		}
 	}
 }
 
@@ -167,13 +178,14 @@ const handleKeyUp = e => {
 	if (currentKey['38']) g_mousePos[1] -= 1;
 	if (currentKey['39']) g_mousePos[0] += 1;
 
+	//if the mouse is outside the button selection list
+	if (g_mousePos[0] < 0 || g_mousePos[1] < 0) {
+		g_mousePos = lastPos;
+	}
+
 	//if they select a move to use
-	if (currentKey['83'] && BGstats !== 'enemy action') {
-		actionManagement(g_buttonPos[g_mousePos[0]]);
-		//make sure they don't chose a move again
-		//which is done by not drawing buttons and changing
-		//the BG stats
-		BGstats = 'none';
+	if (currentKey['83'] && BGstats === 'jonny action') {
+		actionManagement(g_buttonPos[g_mousePos[1]], playerStats['jonny'], enemy);
 	}
 
 	//resetting keys
@@ -193,38 +205,57 @@ const handleKeyDown = e => {
 let g_Move = [];
 
 const drawBG = () => {
+	// clear canvas
+	//ctx.clearRect(0, 0, ctx.width, ctx.height);
+	ctx.beginPath();
+
 	//re filling background. 
-	ctx.fillStyle = '#eeeeee'
+	ctx.fillStyle = '#7c7c7c'
 	ctx.fillRect(0, 0, BGsizeX, BGsizeY);
 	ctx.lineWidth = '5';
 	ctx.rect(0, 0, BGsizeX, BGsizeY);
 	ctx.stroke();
 	
 	switch (BGstats) {
-		case 'none':
+		case 'jonny attack':
 			drawCharacterStats(['jonny'])
 			drawMouse();
 			drawCharacters(['jonny']);
+			drawEnemies([enemy])
+			// if it's player's trun and is attacking.
+			if (g_DMG !== undefined && g_DMG !== null) {
+				writeWord(`${g_DMG}`, 200 ,200);
+			}
+
 		break;
 
         case 'jonny action':
 			drawButtons(playerStats['jonny']['abilities']);
-			if (g_DMG !== null && g_DMG !== undefined) {
-
-    			writeWord(g_DMG, 300, 300);
-			}
 			drawCharacterStats(['jonny']);
 			drawMouse();
 			drawCharacters(['jonny']);
+			drawEnemies([enemy]);
 		break;
 		
-		case 'enemy action':
+		case 'enemy attack':
 			writeWord('hyaaaaaaa', 300, 300);
 
 			drawCharacterStats(['jonny'])
 			drawMouse();
 			drawCharacters(['jonny']);
-		    //drawEnemies([enemy]);
+			drawEnemies([enemy]);
+			if (g_DMG !== undefined && g_DMG !== null) {
+				writeWord(`${g_DMG}`, 200 ,200);
+			}
+		break;
+
+		case 'win':
+			drawCharacterStats(['jonny'])
+			drawMouse();
+			drawCharacters(['jonny']);
+		    writeWord('yeeeeeeeeeeeeetus', 200 ,200);
+			
+		break;
 	}
 
 }
@@ -234,29 +265,31 @@ const drawCharacters = (characters) => {
 	imgy = 300;
 	for (let i = 0; i < characters.length; i++) {
 
-		// if the player is attacking
-		/*
-		if (g_buttonAction === 'attack') {
+		// if the player is attacking	
+		if (BGstats === 'jonny attack' && swordFrame !== -1) {
 			imgx = 600;
-			//this SHOULD make it look like it's stabing the enemies.
-			imgx -= (swordFrame * 5) * PX_NUM;
-
-			//drawing the player.
-			ctx.drawImage(swordswing, 1, 1, 20, 23, imgx, imgy, 20 * PX_NUM, 23 * PX_NUM);
-			//drawing the sword. it will only be the straight one because you are stabing 
-			//it not slicing it
+			//making the player looks like he is swinging his sword
+			if (swordFrame < 5) {
+				ctx.drawImage(swordswing, 121 - (23 + 1) * (swordFrame + 1),
+					1, 23, 23, imgx, imgy, 23 * PX_NUM, 23 * PX_NUM);
+			} else {
+				ctx.drawImage(swordswing , 1, 1, 23, 23, imgx, imgy, 23 * PX_NUM, 23 * PX_NUM);
+			}
+			// drawing the sword
 			imgx -= 16 * PX_NUM;
 			imgy += 10 * PX_NUM;
-
-			ctx.drawImage(sword, 1, 111, 18, 6, imgx, imgy, 18 * PX_NUM, 6 * PX_NUM);
+			ctx.drawImage(sword, 1, ((16 * swordFrame) + (1 * (swordFrame + 1))),
+				16, 16, imgx, imgy, 16 * PX_NUM, 16 * PX_NUM);
 			swordFrame += 1;
+
 			return;
-		} 
-		*/
-		//when it's waiting for his or her turn
-		ctx.drawImage(stand_jonny, imgx, imgy, 16 * (PX_NUM), 23 * (PX_NUM));
-		ctx.drawImage(shield, 0, 0, 6, 18, imgx - (10 * PX_NUM), imgy + (5 * PX_NUM)
-			, 8 * PX_NUM, 16 * PX_NUM);
+		} else {
+			
+			//when it's waiting for his or her turn
+			ctx.drawImage(stand_jonny, imgx, imgy, 16 * (PX_NUM), 23 * (PX_NUM));
+			ctx.drawImage(shield, 0, 0, 6, 18, imgx - (10 * PX_NUM), imgy + (5 * PX_NUM)
+				, 8 * PX_NUM, 16 * PX_NUM);
+		}
 		
 	}
 }
@@ -265,12 +298,21 @@ const drawEnemies = (enemies) => {
 	imgx = 100;
 	imgy = 200;
 	for (let i = 0; i < enemies.length; i++) {
-		//changing the position for every enemy there images
-		imgy += 100 * enemies.length;
-		//getting the image of the enemy
-		img = enemyImages[enemies[i]['NAME']];
-		ctx.drawImage(img, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
 
+		if (BGstats === 'enemy attack' && swordFrame !== -1) {
+			imgx = 100 + (10*swordFrame);
+			//making the enemy is stabing the player
+			ctx.drawImage(swordsmen, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
+            swordFrame += 1;
+			return;
+		} else {
+			//changing the position for every enemy there images
+			imgy += 100 * enemies.length;
+			//getting the image of the enemy
+			img = enemyImages[enemies[i]['NAME']];
+			ctx.drawImage(img, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
+		}
+        
 	}
 }
 
@@ -308,6 +350,7 @@ const drawCharacterStats = (words) => {
 		ctx.fillRect(imgx, imgy, 960, 50);
 		ctx.fillStyle = '#bcbcbc';
 		ctx.rect(imgx, imgy, 960, 50);
+		ctx.stroke();
 
 		//writing the name of the fighter
 		writeWord(words[i], imgx + 10, imgy + 10);
@@ -330,9 +373,12 @@ const drawCharacterStats = (words) => {
 }
 
 const mainLoop = () => {
-	console.log(BGstats);
-	console.log(g_turnList);
-	console.log(g_DMG);
+	//if you win, there is no point of fighting
+	if (g_win) {        
+		BGstats = 'win';
+		drawBG();
+		return;
+	}
 	// if the turn has ended and needs to genrate a new order
 	if (g_turnList.length === 0) {
 		//for now it will be a player 60 and enemy 40 chance.
@@ -347,15 +393,16 @@ const mainLoop = () => {
 			g_turnList.push('jonny');
 		}
 	}
+	// if it is time to do the next turn and you didn't win
 	if (g_doAction === true) {
 		turnManagement();
 	}
-	drawBG();
-	// if it's player's trun and is attacking.
-	if (BGstats === 'none' && g_DMG !== undefined && g_DMG !== null) {
-		writeWord(g_DMG, 200 ,200);
+
+	if (swordFrame >= 7) {
+		swordFrame = -1;
 	}
 
+	drawBG();
 }
 
 const turnManagement = () =>{
@@ -366,28 +413,36 @@ const turnManagement = () =>{
 
 	} else {
 		// if is enemy's move
-		BGstats = 'enemy action';
-
-		setTimeout(() => {
-			g_turnList.shift();
-			g_doAction = true;
-		}, 3000);
+		BGstats = 'enemy attack';
+        actionManagement(enemy['AI'](), enemy, playerStats['jonny']);
 	}
 	g_doAction = false;
 }
 
-const actionManagement = (action) => {
-	g_buttonAction = action;
-	switch (action){
+const actionManagement = (action, attacker, victim) => {
+	switch (action) {
 		//if they chose to attack
-		case 'attack':
-		    g_DMG = 30;
-			enemy['HP'] -= g_DMG;
+		case 'attack': 
+		    const ATK = attacker['ATK'];
+			g_DMG = Math.floor((Math.random() *(ATK + 0.99)) + (ATK*5));
+			victim['HP'] -= g_DMG;
+			//if you defeated the enemy
+			if (attacker === playerStats['jonny']) BGstats = 'jonny attack';
+
+			if (victim['HP'] <= 0) {
+
+				if (attacker === playerStats['jonny']) {
+					// if you win you gotta let it looks like you killed it not instantly kaboom!
+					setTimeout(()=> {
+						g_win = true;
+					}, 2000);
+				} 
+				victim['HP'] = victim['FULL HP'];
+			}		
+			swordFrame = 0;
 		break;
 	}
 	setTimeout(() => {
-		//stops it from attacking
-		g_buttonAction = null;
 		//lets next person attack
 		g_turnList.shift();
 		//resets the damage,
