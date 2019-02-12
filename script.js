@@ -24,6 +24,8 @@ let g_win = false;
 const BGsizeX = 1200;
 const BGsizeY = 750;
 
+//ENEMY DEATH ANIMATION FRAME NUMBER
+let DeathFrame = 0;
 // if it is time to do the next action.
 let g_doAction = true;
 
@@ -44,6 +46,7 @@ const enemyImages = {
 	'spearmen': document.getElementById('spearmen'),
 	'bombermen': document.getElementById('bombermen'),
 }
+const enemyDeath = document.getElementById('enemy death');
 
 const stand_jonny = document.getElementById('player jonny');
 const shield = document.getElementById('shield');
@@ -148,7 +151,7 @@ const bestiary = {
 		//stats
 		'HP': 90,
 		'FULL HP': 90,
-		'ATK': 7,
+		'ATK': 5,
 		// chance of doging attacks
 		'SPD': 1,
 		//critical rate
@@ -156,7 +159,8 @@ const bestiary = {
 		//a function called every time 
 		'AI': () => {
             return 'attack';
-		}
+		},
+		'status': null,
 	}
 }
 
@@ -165,7 +169,8 @@ let enemy;
 
 const startBattle = () => {
 	///setting up enemy timer.
-	enemy = bestiary['swordsmen'];
+	enemy = [];
+	enemy.push(bestiary['swordsmen']);
 };
 
 //this does everything, because if done on key down, it will be called constantly
@@ -185,7 +190,7 @@ const handleKeyUp = e => {
 
 	//if they select a move to use
 	if (currentKey['83'] && BGstats === 'jonny action') {
-		actionManagement(g_buttonPos[g_mousePos[1]], playerStats['jonny'], enemy);
+		actionManagement(g_buttonPos[g_mousePos[1]], playerStats['jonny'], enemy[0]);
 	}
 
 	//resetting keys
@@ -221,7 +226,7 @@ const drawBG = () => {
 			drawCharacterStats(['jonny'])
 			drawMouse();
 			drawCharacters(['jonny']);
-			drawEnemies([enemy])
+			drawEnemies(enemy)
 			// if it's player's trun and is attacking.
 			if (g_DMG !== undefined && g_DMG !== null) {
 				writeWord(`${g_DMG}`, 200 ,200);
@@ -234,7 +239,7 @@ const drawBG = () => {
 			drawCharacterStats(['jonny']);
 			drawMouse();
 			drawCharacters(['jonny']);
-			drawEnemies([enemy]);
+			drawEnemies(enemy);
 		break;
 		
 		case 'enemy attack':
@@ -243,7 +248,7 @@ const drawBG = () => {
 			drawCharacterStats(['jonny'])
 			drawMouse();
 			drawCharacters(['jonny']);
-			drawEnemies([enemy]);
+			drawEnemies(enemy);
 			if (g_DMG !== undefined && g_DMG !== null) {
 				writeWord(`${g_DMG}`, 200 ,200);
 			}
@@ -253,6 +258,7 @@ const drawBG = () => {
 			drawCharacterStats(['jonny'])
 			drawMouse();
 			drawCharacters(['jonny']);
+            drawEnemies(enemy);
 		    writeWord('yeeeeeeeeeeeeetus', 200 ,200);
 			
 		break;
@@ -260,7 +266,7 @@ const drawBG = () => {
 
 }
 
-const drawCharacters = (characters) => {
+const drawCharacters = (characters, conditions) => {
 	imgx = 800;
 	imgy = 300;
 	for (let i = 0; i < characters.length; i++) {
@@ -295,10 +301,27 @@ const drawCharacters = (characters) => {
 }
 
 const drawEnemies = (enemies) => {
+	//conditions is are status like blind, slilent, or death.
 	imgx = 100;
-	imgy = 200;
-	for (let i = 0; i < enemies.length; i++) {
+	imgy = 300;
 
+	for (let i = 0; i < enemies.length; i++) {
+		// if it has any positive or negative status.
+		status = enemies[i]['status'];
+
+		switch(status) {
+			case 'death':
+				//if the animation is done
+				if (DeathFrame >= 7) {
+					return;
+				}
+				ctx.drawImage(enemyDeath,(DeathFrame*26),0,26,27, imgx, imgy, 26 * PX_NUM, 27 * PX_NUM);
+
+				DeathFrame += 1;
+
+                return;
+			break;
+		}
 		if (BGstats === 'enemy attack' && swordFrame !== -1) {
 			imgx = 100 + (10*swordFrame);
 			//making the enemy is stabing the player
@@ -307,12 +330,11 @@ const drawEnemies = (enemies) => {
 			return;
 		} else {
 			//changing the position for every enemy there images
-			imgy += 100 * enemies.length;
+			imgy += 100 * (enemies.length-1);
 			//getting the image of the enemy
 			img = enemyImages[enemies[i]['NAME']];
 			ctx.drawImage(img, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
 		}
-        
 	}
 }
 
@@ -414,7 +436,7 @@ const turnManagement = () =>{
 	} else {
 		// if is enemy's move
 		BGstats = 'enemy attack';
-        actionManagement(enemy['AI'](), enemy, playerStats['jonny']);
+        actionManagement(enemy[0]['AI'](), enemy[0], playerStats['jonny']);
 	}
 	g_doAction = false;
 }
@@ -435,6 +457,7 @@ const actionManagement = (action, attacker, victim) => {
 					// if you win you gotta let it looks like you killed it not instantly kaboom!
 					setTimeout(()=> {
 						g_win = true;
+			            victim['status'] = 'death';
 					}, 2000);
 				} 
 				victim['HP'] = victim['FULL HP'];
@@ -448,7 +471,7 @@ const actionManagement = (action, attacker, victim) => {
 		//resets the damage,
 		// VERY IMPORTANT, DO NOT DELETE
 		g_DMG = null;
-		// allows the player to move on to the next player/ enemy
+		// allows the player to move on to the next player/
 		g_doAction = true;
 	},2000);
 }
@@ -467,4 +490,4 @@ document.addEventListener("keydown", handleKeyDown);
 document.addEventListener("keyup", handleKeyUp);
 
 startBattle();
-setInterval(mainLoop, 33);
+setInterval(mainLoop, 100);
