@@ -18,6 +18,8 @@ g_buttonPos[0] = 'attack';
 g_buttonPos[1] = 'defend';
 g_buttonPos[2] = 'escape';
 
+//the action that is going to be done after select the enemy
+let g_selectedAction;
 
 let g_win = false;
 
@@ -153,6 +155,22 @@ const bestiary = {
 		'FULL HP': 90,
 		'ATK': 5,
 		// chance of doging attacks
+		'SPD': 3,
+		//critical rate
+		'CRT': null,
+		//a function called every time 
+		'AI': () => {
+            return 'attack';
+		},
+		'status': null,
+	},
+	'shieldsmen': {
+		'NAME': 'shieldsmen',
+		//stats
+		'HP': 120,
+		'FULL HP': 120,
+		'ATK': 3,
+		// chance of doging attacks
 		'SPD': 1,
 		//critical rate
 		'CRT': null,
@@ -171,6 +189,19 @@ const startBattle = () => {
 	///setting up enemy timer.
 	enemy = [];
 	enemy.push(bestiary['swordsmen']);
+	enemy.push(bestiary['shieldsmen']);
+};
+
+const endbattle = () => {
+	//function called to reset things that changed for the next battle
+	//resets enemy status
+	for (i = 0; i < enemy.length; i++) {
+		enemy[i]['status'] = null;
+	}
+	//resets player status
+	for (i = 0; i < playerStats.length; i++) {
+
+	}
 };
 
 //this does everything, because if done on key down, it will be called constantly
@@ -190,7 +221,10 @@ const handleKeyUp = e => {
 
 	//if they select a move to use
 	if (currentKey['83'] && BGstats === 'jonny action') {
-		actionManagement(g_buttonPos[g_mousePos[1]], playerStats['jonny'], enemy[0]);
+		BGstats = 'select target';
+		g_selectedAction = g_buttonPos[g_mousePos[1]]
+	} else if (currentKey['83'] && BGstats === 'select target'){
+		actionManagement(g_selectedAction, playerStats['jonny'], enemy[g_mousePos[1]]);
 	}
 
 	//resetting keys
@@ -224,7 +258,7 @@ const drawBG = () => {
 	switch (BGstats) {
 		case 'jonny attack':
 			drawCharacterStats(['jonny'])
-			drawMouse();
+			drawCursor();
 			drawCharacters(['jonny']);
 			drawEnemies(enemy)
 			// if it's player's trun and is attacking.
@@ -237,7 +271,7 @@ const drawBG = () => {
         case 'jonny action':
 			drawButtons(playerStats['jonny']['abilities']);
 			drawCharacterStats(['jonny']);
-			drawMouse();
+			drawCursor();
 			drawCharacters(['jonny']);
 			drawEnemies(enemy);
 		break;
@@ -246,7 +280,7 @@ const drawBG = () => {
 			writeWord('hyaaaaaaa', 300, 300);
 
 			drawCharacterStats(['jonny'])
-			drawMouse();
+			drawCursor();
 			drawCharacters(['jonny']);
 			drawEnemies(enemy);
 			if (g_DMG !== undefined && g_DMG !== null) {
@@ -254,9 +288,17 @@ const drawBG = () => {
 			}
 		break;
 
+		case 'select target':
+			drawCharacterStats(['jonny'])
+			drawCharacters(['jonny']);
+			drawEnemies(enemy);
+			drawCursor();
+			
+		break;
+
 		case 'win':
 			drawCharacterStats(['jonny'])
-			drawMouse();
+			drawCursor();
 			drawCharacters(['jonny']);
             drawEnemies(enemy);
 		    writeWord('yeeeeeeeeeeeeetus', 200 ,200);
@@ -266,7 +308,7 @@ const drawBG = () => {
 
 }
 
-const drawCharacters = (characters, conditions) => {
+const drawCharacters = (characters) => {
 	imgx = 800;
 	imgy = 300;
 	for (let i = 0; i < characters.length; i++) {
@@ -330,7 +372,7 @@ const drawEnemies = (enemies) => {
 			return;
 		} else {
 			//changing the position for every enemy there images
-			imgy += 100 * (enemies.length-1);
+			imgy += 100 * i;
 			//getting the image of the enemy
 			img = enemyImages[enemies[i]['NAME']];
 			ctx.drawImage(img, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
@@ -356,10 +398,22 @@ const drawButtons = (words) => {
 }
 
 // draws the finger cursor from final fantasy 
-const drawMouse = () => {
+const drawCursor = () => {
 	imgx = 170 + (200 * g_mousePos[0])
 	imgy = 525 + (80 * g_mousePos[1]);
+	if (BGstats === 'select target') {
+		console.log("a;kdsjfa;skjfa;skdjfa;klsdfj");
+		imgx = 200;
+		imgy = 300 + (100 * g_mousePos[1]);
+		//because the way enemies are lined out, two in the front three in the back
+		// when you want to select the fornt ones, you press down till you select them
+		if (g_mousePos[1] > 3) {
+			imgx = 200;
+			imgy = 250 + (100 * g_mousePos[1]-3);
+		}
+	}
 	ctx.drawImage(cursor, imgx, imgy, 22 * 2, 22 * 2);
+
 }
 
 // draws the character's stats bar
@@ -453,14 +507,16 @@ const actionManagement = (action, attacker, victim) => {
 
 			if (victim['HP'] <= 0) {
 
-				if (attacker === playerStats['jonny']) {
+				if (attacker === playerStats['jonny'] && enemy.length === 0) {
 					// if you win you gotta let it looks like you killed it not instantly kaboom!
 					setTimeout(()=> {
 						g_win = true;
-			            victim['status'] = 'death';
+						victim['status'] = 'death';
+						endbattle();
 					}, 2000);
-				} 
-				victim['HP'] = victim['FULL HP'];
+				} else {
+
+				}
 			}		
 			swordFrame = 0;
 		break;
