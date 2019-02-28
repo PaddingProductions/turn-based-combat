@@ -34,18 +34,27 @@ let g_doAction = true;
 // damage delt to all enemies, resets every time you attack
 let g_DMG;
 // staus of the background
-let BGstats = 'none';
+let g_BGstats = 'none';
 
 // normal = no buttons just waiting
 // attack = buttons untill you select an action
 // death = welp, your dead.
-BGstats = 'normal';
+g_BGstats = 'normal';
+
+function is_in(a, vector) {
+  for (let i=0;i < vector.length; i++) {
+	  if (vector[i] === a) {
+		  return true;
+	  }
+  }
+  return false;
+}
 
 // images
 const enemyImages = {
 	'swordsmen': document.getElementById('swordsmen'),
 	'shieldsmen': document.getElementById('shieldsmen'),
-	'spearmen': document.getElementById('spearmen'),
+	'spearsmen': document.getElementById('spearsmen'),
 	'bombermen': document.getElementById('bombermen'),
 }
 const enemyDeath = document.getElementById('enemy death');
@@ -129,8 +138,14 @@ let currentKey = {
 	'39': 0,
 }
 
-let playerStats = {
+let playerStatus = {
+	'party': ['jonny'],
 	'jonny': {
+		//positions on screen
+		'posx': 0,
+		'posy': 0,
+		//stats
+		'NAME': 'jonny',
 		'HP': 350,
 		'FULL HP': 350,
 		'MP': 0,
@@ -143,12 +158,16 @@ let playerStats = {
 		//the moves Jonny can do
 		'abilities': ['attack','defend','escape'],
 		//the status it is on, if not, then set to none.
+		'status': null,
 	}
 }
 
 //stats of all enemies in the game
 const bestiary = {
 	'swordsmen': {
+		//positions on screen
+		'posx': 0,
+		'posy': 0,
 		'NAME': 'swordsmen',
 		//stats
 		'HP': 90,
@@ -165,6 +184,9 @@ const bestiary = {
 		'status': null,
 	},
 	'shieldsmen': {
+		//positions on screen
+		'posx': 0,
+		'posy': 0,
 		'NAME': 'shieldsmen',
 		//stats
 		'HP': 120,
@@ -172,6 +194,25 @@ const bestiary = {
 		'ATK': 3,
 		// chance of doging attacks
 		'SPD': 1,
+		//critical rate
+		'CRT': null,
+		//a function called every time 
+		'AI': () => {
+            return 'attack';
+		},
+		'status': null,
+	},
+	'spearsmen': {
+		//positions on screen
+		'posx': 0,
+		'posy': 0,
+		'NAME': 'spearsmen',
+		//stats
+		'HP': 90,
+		'FULL HP': 90,
+		'ATK': 3,
+		// chance of doging attacks
+		'SPD': 3,
 		//critical rate
 		'CRT': null,
 		//a function called every time 
@@ -189,7 +230,8 @@ const startBattle = () => {
 	///setting up enemy timer.
 	enemy = [];
 	enemy.push(bestiary['swordsmen']);
-	enemy.push(bestiary['shieldsmen']);
+	enemy.push(bestiary['spearsmen']);
+
 };
 
 const endbattle = () => {
@@ -199,7 +241,7 @@ const endbattle = () => {
 		enemy[i]['status'] = null;
 	}
 	//resets player status
-	for (i = 0; i < playerStats.length; i++) {
+	for (i = 0; i < playerStatus.length; i++) {
 
 	}
 };
@@ -220,11 +262,11 @@ const handleKeyUp = e => {
 	}
 
 	//if they select a move to use
-	if (currentKey['83'] && BGstats === 'jonny action') {
-		BGstats = 'select target';
+	if (currentKey['83'] && g_BGstats === 'jonny action') {
+		g_BGstats = 'select target';
 		g_selectedAction = g_buttonPos[g_mousePos[1]]
-	} else if (currentKey['83'] && BGstats === 'select target'){
-		actionManagement(g_selectedAction, playerStats['jonny'], enemy[g_mousePos[1]]);
+	} else if (currentKey['83'] && g_BGstats === 'select target'){
+		actionManagement(g_selectedAction, playerStatus['jonny'], enemy[g_mousePos[1]]);
 	}
 
 	//resetting keys
@@ -241,8 +283,6 @@ const handleKeyDown = e => {
 	currentKey[e.keyCode] = 1;
 };
 
-let g_Move = [];
-
 const drawBG = () => {
 	// clear canvas
 	//ctx.clearRect(0, 0, ctx.width, ctx.height);
@@ -255,7 +295,7 @@ const drawBG = () => {
 	ctx.rect(0, 0, BGsizeX, BGsizeY);
 	ctx.stroke();
 	
-	switch (BGstats) {
+	switch (g_BGstats) {
 		case 'jonny attack':
 			drawCharacterStats(['jonny'])
 			drawCursor();
@@ -269,7 +309,7 @@ const drawBG = () => {
 		break;
 
         case 'jonny action':
-			drawButtons(playerStats['jonny']['abilities']);
+			drawButtons(playerStatus['jonny']['abilities']);
 			drawCharacterStats(['jonny']);
 			drawCursor();
 			drawCharacters(['jonny']);
@@ -304,6 +344,26 @@ const drawBG = () => {
 		    writeWord('yeeeeeeeeeeeeetus', 200 ,200);
 			
 		break;
+
+		default:
+			//if it's enemy attack
+			const attacker = g_BGstats.split(" ")[0];
+			const action = g_BGstats.split(" ")[1];
+
+			if (is_in(attacker, playerStatus['party']) === false && action === 'attack') {
+				writeWord('hyaaaaaaa', 300, 300);
+
+				drawCharacterStats(['jonny'])
+				drawCursor();
+				drawCharacters(['jonny']);
+				drawEnemies(enemy);
+				if (g_DMG !== undefined && g_DMG !== null) {
+					writeWord(`${g_DMG}`, 200 ,200);
+				}
+			} else {
+				// if something goes wrong
+				console.log('!!! SOMETHING WRONG !!!');
+			}
 	}
 
 }
@@ -314,7 +374,7 @@ const drawCharacters = (characters) => {
 	for (let i = 0; i < characters.length; i++) {
 
 		// if the player is attacking	
-		if (BGstats === 'jonny attack' && swordFrame !== -1) {
+		if (playerStatus[playerStatus['party'][i]]['status'] === 'attack' && swordFrame !== -1) {
 			imgx = 600;
 			//making the player looks like he is swinging his sword
 			if (swordFrame < 5) {
@@ -331,6 +391,17 @@ const drawCharacters = (characters) => {
 			swordFrame += 1;
 
 			return;
+		} else if (playerStatus[playerStatus['party'][i]] === 'hit') {
+			const random_num = Math.floor(Math.random()*10);
+			if (Math.random() > 0.5) {
+				imgx += random_num;
+			} else {
+				imgx -= random_num;
+			}
+			ctx.drawImage(stand_jonny, imgx, imgy, 16 * (PX_NUM), 23 * (PX_NUM));
+			ctx.drawImage(shield, 0, 0, 6, 18, imgx - (10 * PX_NUM), imgy + (5 * PX_NUM)
+				, 8 * PX_NUM, 16 * PX_NUM);			
+			return;
 		} else {
 			
 			//when it's waiting for his or her turn
@@ -344,15 +415,18 @@ const drawCharacters = (characters) => {
 
 const drawEnemies = (enemies) => {
 	//conditions is are status like blind, slilent, or death.
-	imgx = 100;
-	imgy = 300;
+
 
 	for (let i = 0; i < enemies.length; i++) {
 		// if it has any positive or negative status.
-		status = enemies[i]['status'];
+		const status = enemies[i]['status'];
+		const name = enemies[i]['NAME'];
+		imgx = 100;
+		imgy = 300+(100*i);
 
 		switch(status) {
 			case 'death':
+
 				//if the animation is done
 				if (DeathFrame >= 7) {
 					return;
@@ -361,21 +435,39 @@ const drawEnemies = (enemies) => {
 
 				DeathFrame += 1;
 
-                return;
 			break;
-		}
-		if (BGstats === 'enemy attack' && swordFrame !== -1) {
-			imgx = 100 + (10*swordFrame);
-			//making the enemy is stabing the player
-			ctx.drawImage(swordsmen, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
-            swordFrame += 1;
-			return;
-		} else {
-			//changing the position for every enemy there images
-			imgy += 100 * i;
-			//getting the image of the enemy
-			img = enemyImages[enemies[i]['NAME']];
-			ctx.drawImage(img, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
+			case 'attack': 
+
+			    //if you already swung the sword
+			    if (swordFrame !== -1) {
+					imgx = 100 + (10*swordFrame);
+					//making the enemy is stabing the player
+					ctx.drawImage(enemyImages[name], imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
+					swordFrame += 1;
+				} else {
+					//getting the image of the enemy
+					img = enemyImages[enemies[i]['NAME']];
+					ctx.drawImage(img, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
+				}
+				console.log(`x = ${imgx}`);
+				console.log(`y = ${imgy}`);
+			break;
+			case 'hit':
+			    const random_num = Math.floor(Math.random()*10);
+			    if (Math.random() > 0.5) {
+                    imgx += random_num;
+				} else {
+					imgx -= random_num;
+				}
+				ctx.drawImage(enemyImages[name], imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
+
+			break;
+			default:
+
+				//getting the image of the enemy
+				img = enemyImages[enemies[i]['NAME']];
+				ctx.drawImage(img, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
+			break;
 		}
 	}
 }
@@ -401,8 +493,7 @@ const drawButtons = (words) => {
 const drawCursor = () => {
 	imgx = 170 + (200 * g_mousePos[0])
 	imgy = 525 + (80 * g_mousePos[1]);
-	if (BGstats === 'select target') {
-		console.log("a;kdsjfa;skjfa;skdjfa;klsdfj");
+	if (g_BGstats === 'select target') {
 		imgx = 200;
 		imgy = 300 + (100 * g_mousePos[1]);
 		//because the way enemies are lined out, two in the front three in the back
@@ -435,14 +526,14 @@ const drawCharacterStats = (words) => {
 		//writing the HP of the character and the full hp
 		imgx = imgx + 150;
 		imgy = imgy;
-		HPString = `hp ${playerStats[words[i]]['HP']} / ${playerStats[words[i]]['FULL HP']}`;
+		HPString = `hp ${playerStatus[words[i]]['HP']} / ${playerStatus[words[i]]['FULL HP']}`;
 
 		writeWord(HPString, imgx, imgy);
 
 		//drawing mana/ full mana
 		imgx = imgx + 150;
 		imgy = imgy;
-		HPString = `mp ${playerStats[words[i]]['MP']} / ${playerStats[words[i]]['FULL MP']}`;
+		HPString = `mp ${playerStatus[words[i]]['MP']} / ${playerStatus[words[i]]['FULL MP']}`;
 
 		writeWord(HPString, imgx, imgy);
 	}
@@ -450,8 +541,9 @@ const drawCharacterStats = (words) => {
 
 const mainLoop = () => {
 	//if you win, there is no point of fighting
+	console.log(`BGstats ${g_BGstats}`)
 	if (g_win) {        
-		BGstats = 'win';
+		g_BGstats = 'win';
 		drawBG();
 		return;
 	}
@@ -462,11 +554,15 @@ const mainLoop = () => {
 		let Num = Math.floor(Math.random()*100);
 		// change the 60 into the formula 
 		if (Num <= 50) {
-			g_turnList.push('jonny');
-			g_turnList.push('enemy');
+			g_turnList.push(playerStatus['jonny']);
+			for (let i = 0; i < enemy.length; i++) {
+				g_turnList.push(enemy[i]);
+			}
 		} else {
-			g_turnList.push('enemy');
-			g_turnList.push('jonny');
+			for (let i = 0; i < enemy.length; i++) {
+				g_turnList.push(enemy[i]);
+			}			
+			g_turnList.push(playerStatus['jonny']);
 		}
 	}
 	// if it is time to do the next turn and you didn't win
@@ -479,18 +575,23 @@ const mainLoop = () => {
 	}
 
 	drawBG();
+
 }
 
 const turnManagement = () =>{
 	// if it is the player's turn, then draw the action buttons.
-	if (g_turnList[0] !== 'enemy') {
+	if (is_in(g_turnList[0]['NAME'], playerStatus['party'])) {
   
-		BGstats = `${g_turnList[0]} action`;
+		g_BGstats = `${g_turnList[0]['NAME']} action`;
 
 	} else {
 		// if is enemy's move
-		BGstats = 'enemy attack';
-        actionManagement(enemy[0]['AI'](), enemy[0], playerStats['jonny']);
+		g_BGstats = `${g_turnList[0]['NAME']} attack`;
+		for (i = 0; i < enemy.length; i++) {
+			if (g_turnList[0] === enemy[i]) {
+				actionManagement(enemy[i]['AI'](), enemy[i], playerStatus['jonny']);
+			}
+		}
 	}
 	g_doAction = false;
 }
@@ -499,15 +600,16 @@ const actionManagement = (action, attacker, victim) => {
 	switch (action) {
 		//if they chose to attack
 		case 'attack': 
+		    attacker['status'] = action;
 		    const ATK = attacker['ATK'];
 			g_DMG = Math.floor((Math.random() *(ATK + 0.99)) + (ATK*5));
 			victim['HP'] -= g_DMG;
 			//if you defeated the enemy
-			if (attacker === playerStats['jonny']) BGstats = 'jonny attack';
+			if (attacker === playerStatus['jonny']) g_BGstats = 'jonny attack';
 
 			if (victim['HP'] <= 0) {
 
-				if (attacker === playerStats['jonny'] && enemy.length === 0) {
+				if (attacker === playerStatus['jonny'] && enemy.length === 0) {
 					// if you win you gotta let it looks like you killed it not instantly kaboom!
 					setTimeout(()=> {
 						g_win = true;
@@ -519,6 +621,11 @@ const actionManagement = (action, attacker, victim) => {
 				}
 			}		
 			swordFrame = 0;
+			victim['status'] = 'hit';
+			setTimeout(()=>{
+				victim['status'] = null;
+				attacker['status'] = null;
+			}, 2000);
 		break;
 	}
 	setTimeout(() => {
@@ -529,8 +636,10 @@ const actionManagement = (action, attacker, victim) => {
 		g_DMG = null;
 		// allows the player to move on to the next player/
 		g_doAction = true;
+		victim['status'] = null;
 	},2000);
 }
+
 const writeWord = (word, posx, posy) => {
 	for (i = 0; i < word.length; i++) {
 		var letter = word.charAt(i);
