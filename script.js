@@ -21,8 +21,6 @@ g_buttonPos[2] = 'escape';
 //the action that is going to be done after select the enemy
 let g_selectedAction;
 
-let g_win = false;
-
 const BGsizeX = 1200;
 const BGsizeY = 750;
 
@@ -136,6 +134,10 @@ let currentKey = {
 	'40': 0,
 	//right arrow
 	'39': 0,
+	// A button "S" key
+	'83': 0,
+	// B button "A" key
+	'65': 0,
 }
 
 let playerStatus = {
@@ -256,10 +258,9 @@ const handleKeyUp = e => {
 	if (currentKey['38']) g_mousePos[1] -= 1;
 	if (currentKey['39']) g_mousePos[0] += 1;
 
-	//if the mouse is outside the button selection list
-	if (g_mousePos[0] < 0 || g_mousePos[1] < 0) {
-		g_mousePos = lastPos;
-	}
+	//if the player presses B
+    if (currentKey['65'] && g_BGstats === 'select target') g_BGstats = 'jonny action';	
+	
 
 	//if they select a move to use
 	if (currentKey['83'] && g_BGstats === 'jonny action') {
@@ -269,12 +270,18 @@ const handleKeyUp = e => {
 		actionManagement(g_selectedAction, playerStatus['jonny'], enemy[g_mousePos[1]]);
 	}
 
+	//if the mouse is outside the button selection list
+	if (g_mousePos[0] < 0 || g_mousePos[1] < 0) {
+		g_mousePos = lastPos;
+	}
+
 	//resetting keys
 	currentKey['37'] = 0;
 	currentKey['38'] = 0;
 	currentKey['39'] = 0;
 	currentKey['40'] = 0;
 	currentKey['83'] = 0;
+	currentKey['65'] = 0;
 
 }
 
@@ -329,6 +336,7 @@ const drawBG = () => {
 		break;
 
 		case 'select target':
+		    console.log("select your target")
 			drawCharacterStats(['jonny'])
 			drawCharacters(['jonny']);
 			drawEnemies(enemy);
@@ -449,8 +457,6 @@ const drawEnemies = (enemies) => {
 					img = enemyImages[enemies[i]['NAME']];
 					ctx.drawImage(img, imgx, imgy, 32 * PX_NUM, 30 * PX_NUM);
 				}
-				console.log(`x = ${imgx}`);
-				console.log(`y = ${imgy}`);
 			break;
 			case 'hit':
 			    const random_num = Math.floor(Math.random()*10);
@@ -540,9 +546,14 @@ const drawCharacterStats = (words) => {
 }
 
 const mainLoop = () => {
+	// for printing enemy HP
+    for (i = 0; i < enemy.length; i++) {
+		console.log(`${enemy[i]['NAME']} HP = ${enemy[i]['HP']}`);
+	}
+	
+
 	//if you win, there is no point of fighting
-	console.log(`BGstats ${g_BGstats}`)
-	if (g_win) {        
+	if (enemy === []) {        
 		g_BGstats = 'win';
 		drawBG();
 		return;
@@ -607,35 +618,37 @@ const actionManagement = (action, attacker, victim) => {
 			//if you defeated the enemy
 			if (attacker === playerStatus['jonny']) g_BGstats = 'jonny attack';
 
-			if (victim['HP'] <= 0) {
+			if (victim['HP'] <= 0 && attacker === playerStatus['jonny']) {
+				// if you win you gotta let it looks like you killed it not instantly kaboom!
+				setTimeout(()=> {
+					victim['status'] = 'death';
+					for (i = 0; i < enemy.length; i++) {
+						if (enemy[i] === victim) enemy.splice(i, 1);
+					}
+				}, 2000);
 
-				if (attacker === playerStatus['jonny'] && enemy.length === 0) {
-					// if you win you gotta let it looks like you killed it not instantly kaboom!
-					setTimeout(()=> {
-						g_win = true;
-						victim['status'] = 'death';
-						endbattle();
-					}, 2000);
-				} else {
+				// if there are no enemy left on the battle field
+				if (enemy.length === 0) {
 
-				}
+				} 
 			}		
 			swordFrame = 0;
 			victim['status'] = 'hit';
 			setTimeout(()=>{
+				//lets next person attack
+				g_turnList.shift();
+				//resets the damage,
+				// VERY IMPORTANT, DO NOT DELETE
+				g_DMG = null;
+				// allows the player to move on to the next player/
+				g_doAction = true;
 				victim['status'] = null;
 				attacker['status'] = null;
 			}, 2000);
 		break;
 	}
 	setTimeout(() => {
-		//lets next person attack
-		g_turnList.shift();
-		//resets the damage,
-		// VERY IMPORTANT, DO NOT DELETE
-		g_DMG = null;
-		// allows the player to move on to the next player/
-		g_doAction = true;
+
 		victim['status'] = null;
 	},2000);
 }
