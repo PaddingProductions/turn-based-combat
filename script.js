@@ -346,11 +346,11 @@ const drawBG = () => {
 
 		case 'win':
 			drawCharacterStats(['jonny'])
-			drawCursor();
 			drawCharacters(['jonny']);
-            drawEnemies(enemy);
-		    writeWord('yeeeeeeeeeeeeetus', 200 ,200);
-			
+			writeWord('yeeeeeetus', 200 ,200);
+			setInterval(()=> {
+				endbattle();
+			}, 2000)
 		break;
 
 		default:
@@ -629,7 +629,7 @@ const actionManagement = (action, attacker, victim) => {
 
 				// if there are no enemy left on the battle field
 				if (enemy.length === 0) {
-
+               		g_BGstats = 'win';
 				} 
 			}		
 			swordFrame = 0;
