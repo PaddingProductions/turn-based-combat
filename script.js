@@ -26,13 +26,17 @@ const BGsizeY = 750;
 
 //ENEMY DEATH ANIMATION FRAME NUMBER
 let DeathFrame = 0;
+
+//player Win ANIMATION FRAME NUMBER
+let swordSpinFrame = 0;
+
 // if it is time to do the next action.
 let g_doAction = true;
 
 // damage delt to all enemies, resets every time you attack
 let g_DMG;
 // staus of the background
-let g_BGstats = 'none';
+let g_BGstats = 'win';
 
 // normal = no buttons just waiting
 // attack = buttons untill you select an action
@@ -62,7 +66,8 @@ const shield = document.getElementById('shield');
 const sword = document.getElementById('sword');
 const swordswing = document.getElementById('swordswing');
 
-
+const swordSpin = document.getElementById('sword spin');
+const jonnyWinPose = document.getElementById('jonny win pose');
 
 var letterList = {
 	'a': document.getElementById('letterA'),
@@ -232,20 +237,23 @@ const startBattle = () => {
 	///setting up enemy timer.
 	enemy = [];
 	enemy.push(bestiary['swordsmen']);
-	enemy.push(bestiary['spearsmen']);
+	//enemy.push(bestiary['spearsmen']);
 
 };
 
-const endbattle = () => {
-	//function called to reset things that changed for the next battle
-	//resets enemy status
-	for (i = 0; i < enemy.length; i++) {
-		enemy[i]['status'] = null;
+const endbattle = (frames) => {
+	ctx.save();
+	{
+		ctx.lineWidth = 5;
+		ctx.beginPath();
+		if (frames === undefined) {
+			return 1;
+		}
+		ctx.arc(100, 75, frames*10, 0, 2 * Math.PI);
+		ctx.stroke();
 	}
-	//resets player status
-	for (i = 0; i < playerStatus.length; i++) {
-
-	}
+	ctx.restore();
+	return frames += 1;
 };
 
 //this does everything, because if done on key down, it will be called constantly
@@ -336,7 +344,6 @@ const drawBG = () => {
 		break;
 
 		case 'select target':
-		    console.log("select your target")
 			drawCharacterStats(['jonny'])
 			drawCharacters(['jonny']);
 			drawEnemies(enemy);
@@ -346,13 +353,18 @@ const drawBG = () => {
 
 		case 'win':
 			drawCharacterStats(['jonny'])
-			drawCharacters(['jonny']);
 			writeWord('yeeeeeetus', 200 ,200);
-			setInterval(()=> {
-				endbattle();
-			}, 2000)
-		break;
+			drawCharacters(['jonny']);
 
+		break;
+		
+		case 'end': 
+			drawCharacterStats(["jonny"]);
+			drawCharacters(['jonny']);
+			setInterval(() => {
+				let frame = endbattle(frame);
+			}, 33);
+		break;
 		default:
 			//if it's enemy attack
 			const attacker = g_BGstats.split(" ")[0];
@@ -381,8 +393,23 @@ const drawCharacters = (characters) => {
 	imgy = 300;
 	for (let i = 0; i < characters.length; i++) {
 
-		// if the player is attacking	
-		if (playerStatus[playerStatus['party'][i]]['status'] === 'attack' && swordFrame !== -1) {
+	    //if you won the battle.
+		if (g_BGstats === 'win') {
+			ctx.drawImage(jonnyWinPose, imgx, imgy, 16 * PX_NUM, 24 * PX_NUM);
+
+			const degree = swordSpinFrame / 8 * 360;
+
+			// moving the imge to the center of the hand
+			ctx.save();
+		    {
+				ctx.translate(imgx+45, imgy-PX_NUM);
+				ctx.rotate(degree / 180 * Math.PI);
+				ctx.drawImage(swordSpin, -9*PX_NUM, -18*PX_NUM, 16*PX_NUM, 16*PX_NUM);
+			}
+			ctx.restore();
+			// if the player is attacking	
+
+		} else if (playerStatus[playerStatus['party'][i]]['status'] === 'attack' && swordFrame !== -1) {
 			imgx = 600;
 			//making the player looks like he is swinging his sword
 			if (swordFrame < 5) {
@@ -399,6 +426,9 @@ const drawCharacters = (characters) => {
 			swordFrame += 1;
 
 			return;
+			// if he is being hit by the enemy
+
+
 		} else if (playerStatus[playerStatus['party'][i]] === 'hit') {
 			const random_num = Math.floor(Math.random()*10);
 			if (Math.random() > 0.5) {
@@ -406,10 +436,14 @@ const drawCharacters = (characters) => {
 			} else {
 				imgx -= random_num;
 			}
-			ctx.drawImage(stand_jonny, imgx, imgy, 16 * (PX_NUM), 23 * (PX_NUM));
+			ctx.drawImage(stand_jonny, imgx, imgy, 16 * PX_NUM, 23 * PX_NUM);
 			ctx.drawImage(shield, 0, 0, 6, 18, imgx - (10 * PX_NUM), imgy + (5 * PX_NUM)
 				, 8 * PX_NUM, 16 * PX_NUM);			
 			return;
+
+			// other situations
+
+
 		} else {
 			
 			//when it's waiting for his or her turn
@@ -546,16 +580,18 @@ const drawCharacterStats = (words) => {
 }
 
 const mainLoop = () => {
-	// for printing enemy HP
-    for (i = 0; i < enemy.length; i++) {
-		console.log(`${enemy[i]['NAME']} HP = ${enemy[i]['HP']}`);
-	}
-	
-
+	console.log(g_BGstats)
+	enemy = [];
 	//if you win, there is no point of fighting
-	if (enemy === []) {        
-		g_BGstats = 'win';
+	if (g_BGstats === 'win') {        
 		drawBG();
+		swordSpinFrame += 1;
+		if (swordSpinFrame > 8) {
+			swordSpinFrame = 0;
+			setTimeout(()=> {
+                g_BGstats = 'end';
+			}, 1000)
+		}
 		return;
 	}
 	// if the turn has ended and needs to genrate a new order
@@ -622,15 +658,20 @@ const actionManagement = (action, attacker, victim) => {
 				// if you win you gotta let it looks like you killed it not instantly kaboom!
 				setTimeout(()=> {
 					victim['status'] = 'death';
+					// taking the enemy out of the enemy list
 					for (i = 0; i < enemy.length; i++) {
 						if (enemy[i] === victim) enemy.splice(i, 1);
 					}
+					// taking the enemy out of the turn list
+					for (i = 0; i < g_turnList.length; i++) {
+						if (g_turnList[i] === victim) g_turnList.splice(i, 1);
+					}
+					// if there are no enemy left on the battle field
+					if (enemy.length === 0) {
+						console.log("a;kldfja;lskjdfa;slkdjfa;sdlfjka;ldsfjk")
+        	       		g_BGstats = 'win';
+					} 
 				}, 2000);
-
-				// if there are no enemy left on the battle field
-				if (enemy.length === 0) {
-               		g_BGstats = 'win';
-				} 
 			}		
 			swordFrame = 0;
 			victim['status'] = 'hit';
