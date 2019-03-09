@@ -40,7 +40,7 @@ let g_DMG;
 // normal = no buttons just waiting
 // attack = buttons untill you select an action
 // death = welp, your dead.
-let g_BGstats = 'win';
+let g_BGstats = 'none';
 
 //frame # for the disapearing act
 let disapearFrame = 0;
@@ -239,7 +239,7 @@ const startBattle = () => {
 	///setting up enemy timer.
 	enemy = [];
 	enemy.push(bestiary['swordsmen']);
-	//enemy.push(bestiary['spearsmen']);
+	enemy.push(bestiary['spearsmen']);
 
 };
 
@@ -587,7 +587,7 @@ const drawCharacterStats = (words) => {
 
 const mainLoop = () => {
 	console.log(g_BGstats)
-	enemy = [];
+
 	//if you win, there is no point of fighting
 	if (g_BGstats === 'win') {        
 		drawBG();
