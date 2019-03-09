@@ -21,8 +21,8 @@ g_buttonPos[2] = 'escape';
 //the action that is going to be done after select the enemy
 let g_selectedAction;
 
-const BGsizeX = 1200;
-const BGsizeY = 750;
+const g_BGsizeX = 1200;
+const g_BGsizeY = 750;
 
 //ENEMY DEATH ANIMATION FRAME NUMBER
 let DeathFrame = 0;
@@ -35,13 +35,15 @@ let g_doAction = true;
 
 // damage delt to all enemies, resets every time you attack
 let g_DMG;
-// staus of the background
-let g_BGstats = 'win';
 
+// staus of the background
 // normal = no buttons just waiting
 // attack = buttons untill you select an action
 // death = welp, your dead.
-g_BGstats = 'normal';
+let g_BGstats = 'win';
+
+//frame # for the disapearing act
+let disapearFrame = 0;
 
 function is_in(a, vector) {
   for (let i=0;i < vector.length; i++) {
@@ -241,19 +243,11 @@ const startBattle = () => {
 
 };
 
-const endbattle = (frames) => {
-	ctx.save();
-	{
-		ctx.lineWidth = 5;
-		ctx.beginPath();
-		if (frames === undefined) {
-			return 1;
-		}
-		ctx.arc(100, 75, frames*10, 0, 2 * Math.PI);
-		ctx.stroke();
-	}
-	ctx.restore();
-	return frames += 1;
+const endbattle = () => {
+	ctx.beginPath();
+	ctx.arc(600,375,(1200-disapearFrame*30)/2,0, Math.PI*2, true);
+	ctx.clip();
+    disapearFrame += 1;
 };
 
 //this does everything, because if done on key down, it will be called constantly
@@ -304,10 +298,16 @@ const drawBG = () => {
 	ctx.beginPath();
 
 	//re filling background. 
-	ctx.fillStyle = '#7c7c7c'
-	ctx.fillRect(0, 0, BGsizeX, BGsizeY);
+	ctx.fillStyle = '#7c7c7c';
 	ctx.lineWidth = '5';
-	ctx.rect(0, 0, BGsizeX, BGsizeY);
+	
+	if (g_BGstats !== 'end') {
+		ctx.fillRect(0, 0, g_BGsizeX, g_BGsizeY);
+		ctx.rect(0, 0, g_BGsizeX, g_BGsizeY);
+	} else {
+		ctx.fillStyle = '#000'
+		ctx.fillRect(0,0, g_BGsizeX, g_BGsizeY)
+	}
 	ctx.stroke();
 	
 	switch (g_BGstats) {
@@ -359,11 +359,17 @@ const drawBG = () => {
 		break;
 		
 		case 'end': 
-			drawCharacterStats(["jonny"]);
-			drawCharacters(['jonny']);
-			setInterval(() => {
-				let frame = endbattle(frame);
-			}, 33);
+			ctx.save();
+			{
+				endbattle(disapearFrame);
+
+				ctx.fillStyle = '#7c7c7c'
+				ctx.fillRect(0,0, g_BGsizeX, g_BGsizeY)
+
+				drawCharacterStats(["jonny"]);
+				drawCharacters(['jonny']);
+			}
+			ctx.restore()
 		break;
 		default:
 			//if it's enemy attack
