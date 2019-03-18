@@ -243,7 +243,7 @@ const startBattle = () => {
 
 };
 
-const endbattle = () => {
+const endBattle = () => {
 	ctx.beginPath();
 	ctx.arc(600,375,(1200-disapearFrame*30)/2,0, Math.PI*2, true);
 	ctx.clip();
@@ -361,12 +361,12 @@ const drawBG = () => {
 		case 'end': 
 			ctx.save();
 			{
-				endbattle(disapearFrame);
+				endBattle();
 
 				ctx.fillStyle = '#7c7c7c'
 				ctx.fillRect(0,0, g_BGsizeX, g_BGsizeY)
 
-				drawCharacterStats(["jonny"]);
+				drawCharacterStats(['jonny']);
 				drawCharacters(['jonny']);
 			}
 			ctx.restore()
@@ -383,6 +383,8 @@ const drawBG = () => {
 				drawCursor();
 				drawCharacters(['jonny']);
 				drawEnemies(enemy);
+
+				//damage delt
 				if (g_DMG !== undefined && g_DMG !== null) {
 					writeWord(`${g_DMG}`, 200 ,200);
 				}
